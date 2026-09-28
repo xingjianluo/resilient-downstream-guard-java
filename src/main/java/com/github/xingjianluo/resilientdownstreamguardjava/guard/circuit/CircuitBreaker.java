@@ -126,26 +126,37 @@ public final class CircuitBreaker {
     }
 
     private void toOpen(long now) {
+        CircuitState from = state;
         state = CircuitState.OPEN;
         openedAtMillis = now;
         activeProbes = 0;
         successProbes = 0;
         transitionCount++;
+        logTransition(from, CircuitState.OPEN, now, null);
     }
 
     private void toHalfOpen(long now) {
+        CircuitState from = state;
         state = CircuitState.HALF_OPEN;
         activeProbes = 1;
         successProbes = 0;
         transitionCount++;
+        logTransition(from, CircuitState.HALF_OPEN, now, "probe permitted=1/" + config.permittedNumberOfCallsInHalfOpen());
     }
 
     private void toClosed() {
+        CircuitState from = state;
         state = CircuitState.CLOSED;
         openedAtMillis = -1L;
         activeProbes = 0;
         successProbes = 0;
         window.reset();
         transitionCount++;
+        logTransition(from, CircuitState.CLOSED, timeSource.nowMillis(), "all probes succeeded, window reset");
+    }
+
+    private void logTransition(CircuitState from, CircuitState to, long at, String detail) {
+        System.out.printf("[circuit:%s] %s -> %s at=%d%s%n", downstreamName, from, to, at,
+                detail == null ? "" : " (" + detail + ")");
     }
 }
